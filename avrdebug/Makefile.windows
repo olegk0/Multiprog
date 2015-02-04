@@ -1,0 +1,31 @@
+# Name: Makefile.windows
+# Project: AVR-Doper
+# Author: Christian Starkjohann
+# Creation Date: 2007-11-20
+# Tabsize: 4
+# Copyright: (c) 2007 by OBJECTIVE DEVELOPMENT Software GmbH
+# License: Proprietary, free under certain conditions. See Documentation.
+
+# You may use this file with
+#   make -f Makefile.windows
+# on Windows with MinGW instead of editing the main Makefile.
+
+EXE_SUFFIX = .exe
+PROGRAMHID = avrdebug-hid$(EXE_SUFFIX)
+
+include Makefile
+
+
+USBFLAGS = -I/usr/local/mingw/include -I/usr/include/mingw
+
+USBLIBS = -L/usr/local/mingw/lib -lusb
+
+USBLIBSHID = -L/usr/local/mingw/lib -lhid -lsetupapi
+
+avrdebug-hid.o: avrdebug.c
+	$(CC) $(CFLAGS) -DUSE_WINDOWS_HID=1 -c avrdebug.c -o avrdebug-hid.o
+	
+hid: $(PROGRAMHID)
+
+$(PROGRAMHID): winusb.o avrdebug-hid.o
+	$(CC) -o $(PROGRAMHID) winusb.o avrdebug-hid.o $(USBLIBSHID)
