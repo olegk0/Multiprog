@@ -21,7 +21,7 @@
 
 uchar HVgenOn(uint uPRG)
 {
-	uchar to;
+//	uchar to;
 
 	vregInit(uPRG);
 	TCCR1A = UTIL_BIN8(1000, 0010);  /* OC1A = PWM, OC1B disconnected, 9 bit */

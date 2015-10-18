@@ -255,7 +255,7 @@ void        *param;
     SWITCH_CASE(STK_CMD_PREPARE_PROGMODE_ISCP)
     	txBuffer[STK_TXMSG_START + 1] =	iscpPrepareProgmode(param);
     SWITCH_CASE(STK_CMD_LEAVE_PROGMODE_ISCP)
-    	iscpLeaveProgmode(param);
+    	iscpLeaveProgmode();
     SWITCH_CASE(STK_CMD_RUN_ISCP)
     	len.word = 1 + iscpRunProgmode((void *)rxBuffer, (void *)&txBuffer[STK_TXMSG_START + 1]);
 //++++++++++++++++++end pic prog

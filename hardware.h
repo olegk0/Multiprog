@@ -37,7 +37,7 @@ This module defines hardware properties and configuration choices.
  * interface to send and receive STK500 serial data. If both, the CDC-ACM and
  * HID interface are enabled, a jumper selects which one is used.
  */
-#define ENABLE_CDC_INTERFACE    1
+#define ENABLE_CDC_INTERFACE    0
 /* If this option is defined to 1, the device implements a CDC-ACM modem,
  * emulating the behavior of the STK500 board on a virtual COM port.
  */

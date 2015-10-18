@@ -29,15 +29,20 @@
 
 
 
-#define enablePGC_D() { PORT_DDR_OUT(HWPIN_HVPIC_PGC); PORT_DDR_OUT(HWPIN_HVPIC_PGD); }
-//#define disablePGC_D() { PORT_DDR_IN(HWPIN_HVPIC_PGC); PORT_DDR_IN(HWPIN_HVPIC_PGD); }
+//#define enablePGC_D() { PORT_DDR_OUT(HWPIN_HVPIC_PGC); PORT_DDR_OUT(HWPIN_HVPIC_PGD); }
+#define enablePGC_D() { PORT_DDR_OUT(HWPIN_HVPIC_PGC); PORT_PIN_CLR(HWPIN_HVPIC_PGD);}
+#define disablePGC_D() { PORT_DDR_IN(HWPIN_HVPIC_PGC); PORT_DDR_IN(HWPIN_HVPIC_PGD); }
 
 #define setPGDinput() PORT_DDR_IN(HWPIN_HVPIC_PGD)
 #define setPGDoutput() PORT_DDR_OUT(HWPIN_HVPIC_PGD)
 
-#define PGDhigh() PORT_PIN_SET(HWPIN_HVPIC_PGD)
+//#define PGDhigh() PORT_PIN_SET(HWPIN_HVPIC_PGD)
+//#define PGDhigh() PORT_PIN_SET(HWPIN_HVPIC_PGD)
+#define PGDhigh() PORT_DDR_IN(HWPIN_HVPIC_PGD)
+//#define PGDlow() PORT_PIN_CLR(HWPIN_HVPIC_PGD)
+#define PGDlow() PORT_DDR_OUT(HWPIN_HVPIC_PGD)
+
 #define PGChigh() PORT_PIN_SET(HWPIN_HVPIC_PGC)
-#define PGDlow() PORT_PIN_CLR(HWPIN_HVPIC_PGD)
 #define PGClow() PORT_PIN_CLR(HWPIN_HVPIC_PGC)
 
 //#define enableVDD()
@@ -49,9 +54,19 @@
 //~ 0.5 us
 #define Nop() asm volatile("rjmp .+0"::)
 
-//#define
 
-//#define PGD_READ
+typedef union {
+	struct{
+		unsigned int byte0 : 8;
+		unsigned int byte1 : 8;
+		unsigned int byte2 : 8;
+		unsigned int byte3 : 8;
+	};
+	struct{
+		uint32_t a32b;
+	};
+
+} t32_t;
 
 /**
     Would one Nop() cycle be enough delay for all PIC's?
@@ -94,7 +109,7 @@ uint pic_read_14_bits();
 /**
     Writes a n-bit command.
 */
-void pic_send_n_bits( uint8_t cmd_size, uint32_t command );
+void pic_send_n_bits( uint8_t cmd_size, uint8_t command );
 
 /**
     Writes a 14 bit word with a start and a stop bit (16F devices).
@@ -126,7 +141,7 @@ uint dspic_read_16_bits(void);
 /**
   gives a 24 bit instruction to a dsPIC device
 */
-void dspic_send_24_bits(unsigned long payload);
+void dspic_send_24_bits(t32_t *p);
 
 
 /**
@@ -187,10 +202,8 @@ typedef struct stkReadFlashResult{
 }stkReadFlashResult_t;
 
 uint8_t iscpPrepareProgmode(uint *param);
-void iscpLeaveProgmode(uint8_t *param);
+void iscpLeaveProgmode(void);
 uint8_t iscpRunProgmode(stkProgCMDIscp_t *param, stkReadFlashIspResult_t *result);
-
-
 
 
 
@@ -199,9 +212,10 @@ uint8_t iscpRunProgmode(stkProgCMDIscp_t *param, stkReadFlashIspResult_t *result
 //low - count of parameters > 0-7 bytes
 //hi - code of command from list: (0-31)
 enum{
-c_nop =0,
-c_setPGDinput=10,
-c_setPGDoutput=11,
+c_nop=0,
+c_enablePGC_D=5,
+//c_setPGDinput=10,
+//c_setPGDoutput=11,
 
 c_PGDlow=20,
 c_PGDhigh=21,
@@ -230,7 +244,9 @@ c_dspic_read_16_bits=63,
 c_set_param=70	//+2 bytes - num param and value
 };
 
-#define toCMD(x) x
+//#define c_setPGDinput c_PGDhigh
+//#define c_setPGDoutput c_PGDlow
+
 //x<<3
 #define CMD_MASK_HI 0b11111000
 #define CMD_MASK_LO 0b111

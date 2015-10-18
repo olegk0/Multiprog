@@ -47,8 +47,10 @@ unsigned uint8_t ConfigLimitPGDPGC=0;
 void clock_delay()
 {
 	uint8_t cnt;
+//	uint8_t n;
 	for(cnt=0;cnt<clock_delay_cnt;cnt++)
-		Nop();
+//		for(n=0;n<10;n++)
+			Nop();
 }
 
 uint8_t iscpPrepareProgmode(uint *param)
@@ -57,17 +59,17 @@ uint8_t iscpPrepareProgmode(uint *param)
 	ret = HVgenOn(PRG13V);
 //	ret = HVgenOn(*param);
 
-	enablePGC_D(); //PGC/D output & PGC/D_LOW appropriate
+/*	enablePGC_D(); //PGC/D output & PGC/D_LOW appropriate
 	PGDlow(); // initial value for programming mode
 	PGClow(); // initial value for programming mode
 	HVRESET_ENABLE;
 	HVRESET_TO_RESET;
-
+*/
 	return ret;
 }
 
 
-void iscpLeaveProgmode(uint8_t *param)
+void iscpLeaveProgmode(void)
 {
 	HVgenOff();
 
@@ -85,8 +87,8 @@ void iscpLeaveProgmode(uint8_t *param)
 
 //-------------------------------WRITE-----------------------------------
 
-//Writes a n-bit command
-void pic_send_n_bits( uint8_t cmd_size, uint32_t command )
+//Writes a n-bit command < 8 bit
+void pic_send_n_bits( uint8_t cmd_size, uint8_t command )
 {
 	uint8_t i;
 //	enablePGC_D()
@@ -133,9 +135,8 @@ void send_clock( uint8_t count )
 	}
 }
 
-void dspic_send_24_bits( uint32_t p )
+void dspic_send_24_bits( t32_t *p )
 {
-    uint8_t payload;
 
     PGDlow();
     /*
@@ -146,22 +147,17 @@ void dspic_send_24_bits( uint32_t p )
         PGClow();
     }
     */
-    send_clock( 4);
-    payload = ((uint8_t *)&p)[0];
+    send_clock(4);
 
-    pic_send_n_bits( 8, payload );
-
-    PGDlow();
-
-    payload = ((uint8_t *)&p)[1];
-
-    pic_send_n_bits( 8, payload );
+    pic_send_n_bits( 8, p->byte0 );
 
     PGDlow();
 
-    payload = ((uint8_t *)&p)[2];
+    pic_send_n_bits( 8, p->byte1 );
 
-    pic_send_n_bits( 8, payload );
+    PGDlow();
+
+    pic_send_n_bits( 8, p->byte2 );
 
     PGDlow();
 
@@ -459,18 +455,21 @@ void read_data_P16F18XX( uint32_t address, uint8_t* data, uint8_t blocksize, uin
 */
 //---------------------------------Run-------------------------------
 
+
+
 uint8_t iscpRunProgmode(stkProgCMDIscp_t *param, stkReadFlashIspResult_t *result)
 {
 	uint8_t /*args,*/t8,retWords=0,cmd;
 	uint8_t *pCmd;
 	uint16_t *pRes;
-	uint32_t t32;
 //	utilWord_t  numBytes;
+	t32_t	t32;
 
 	pRes = (void *)&result->data;
 	result->status1 = STK_STATUS_CMD_OK;
 	pCmd = &param->data;
 	param->sizel--;// - cmd byte
+	PORT_PIN_CLR(HWPIN_LED);
 	while((pCmd - &param->data) < param->sizel){
 		wdt_reset();
 //		args = (*pCmd)&CMD_MASK_LO;
@@ -478,108 +477,101 @@ uint8_t iscpRunProgmode(stkProgCMDIscp_t *param, stkReadFlashIspResult_t *result
 		pCmd++;//pointer to next byte (next cmd or arg)
 //		switch((*pCmd++)/*&CMD_MASK_HI*/){//pointer to next byte (next cmd or arg)
 		switch(cmd){
-		case toCMD(c_nop):
+		case c_nop:
 				break;
-		case toCMD(c_setPGDinput):
+/*		case c_setPGDinput):
 				setPGDinput();
 				break;
-		case toCMD(c_setPGDoutput):
+		case c_setPGDoutput):
 				setPGDoutput();
+				break;*/
+		case c_enablePGC_D:
+				enablePGC_D();
 				break;
-		case toCMD(c_PGDlow):
+		case c_PGDlow:
 				PGDlow();
 				break;
-		case toCMD(c_PGDhigh):
+		case c_PGDhigh:
 				PGDhigh();
 				break;
-		case toCMD(c_PGClow):
+		case c_PGClow:
 				PGClow();
 				break;
-		case toCMD(c_PGChigh):
+		case c_PGChigh:
 				PGChigh();
 				break;
-		case toCMD(c_VDDon):
+		case c_VDDon:
 				VDDon();
 				break;
-		case toCMD(c_VDDoff):
+		case c_VDDoff:
 				VDDoff();
 				break;
-/*		case toCMD(c_HVReset_ENABLE):
+		case c_HVReset_ENABLE:
 				HVRESET_ENABLE;
 				break;
-*/		case toCMD(c_HVReset_OFF):
+		case c_HVReset_OFF:
 				HVRESET_OFF;
 				break;
-		case toCMD(c_HVReset_TO_RESET):
+		case c_HVReset_TO_RESET:
 				HVRESET_TO_RESET;
 				break;
-		case toCMD(c_HVReset_TO_HV):
+		case c_HVReset_TO_HV:
 				HVRESET_TO_HV;
 				break;
-		case toCMD(c_clock_delay):
+		case c_clock_delay:
 				clock_delay();
 				break;
-		case toCMD(c_DelayMs):// 1 parameter
+		case c_DelayMs:// 1 parameter
 				timerMsDelay(*pCmd);
 				pCmd++;
 			break;
-		case toCMD(c_DelayUs):// 1 parameter *5us
+		case c_DelayUs:// 1 parameter *5us
 				timerTicksDelay(*pCmd);
 				pCmd++;
 				break;
-		case toCMD(c_pic_send):
-				t32 = 0;
+		case c_pic_send:
 				t8 = (*pCmd);
 				pCmd++;
-				if(t8>24){// 32;
-					t32 |= (uint32_t)(*pCmd)<<24;
+				while(t8 > 8){
+					pic_send_n_bits(8, *pCmd);
 					pCmd++;
+					t8 -= 8;
 				}
-				if(t8>16){// 24;
-					t32 |= (uint32_t)(*pCmd)<<16;
-					pCmd++;
-				}
-				if(t8>8){// 16;
-					t32 |= (uint32_t)(*pCmd)<<8;
-					pCmd++;
-				}
-				// 8;
-				t32 |= (uint32_t)(*pCmd);
+				pic_send_n_bits(t8, *pCmd);
 				pCmd++;
-				pic_send_n_bits(t8, t32);
 				break;
-		case toCMD(c_dspic_send_24):
-//				t32 = 0;
-				t32 = (uint32_t)(*pCmd)<<16;
+		case c_dspic_send_24:
+				t32.byte3 = 0;
+				t32.byte0 = *pCmd;
 				pCmd++;
-				t32 |= (uint32_t)(*pCmd)<<8;
+				t32.byte1 = *pCmd;
 				pCmd++;
-				t32 |= (uint32_t)(*pCmd);
+				t32.byte2 = *pCmd;
 				pCmd++;
-				dspic_send_24_bits(t32);
+				dspic_send_24_bits(&t32);
 				break;
-		case toCMD(c_pic_read):
+		case c_pic_read:
 				*pRes = pic_read(*pCmd);
 				pCmd++;
 				pRes++;
 				retWords++;
 				break;
-		case toCMD(c_pic_read_14_bits):
+		case c_pic_read_14_bits:
 				*pRes = pic_read_14_bits();
 				pRes++;
 				retWords++;
 				break;
-		case toCMD(c_pic_read_byte2):
+		case c_pic_read_byte2:
 				*pRes = pic_read_byte2();
 				pRes++;
 				retWords++;
 				break;
-		case toCMD(c_dspic_read_16_bits):
+		case c_dspic_read_16_bits:
 				*pRes = dspic_read_16_bits();
 				pRes++;
 				retWords++;
 				break;
-		case toCMD(c_set_param):
+		case c_set_param:
 				switch(*pCmd++){
 				case p_param_clock_delay:
 					clock_delay_cnt = *pCmd;
@@ -604,6 +596,7 @@ uint8_t iscpRunProgmode(stkProgCMDIscp_t *param, stkReadFlashIspResult_t *result
 	}
 //	BUFFER_SIZE
 end:
+	PORT_PIN_SET(HWPIN_LED);
 //	return numBytes.word +2;
 	return (retWords<<1) + 1;
 }
